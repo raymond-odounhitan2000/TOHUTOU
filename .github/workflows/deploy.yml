@@ -5,9 +5,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  DOCKER_IMAGE: ghcr.io/${{ github.repository }}
-
 jobs:
   deploy:
     name: Build, Push & Deploy
@@ -18,6 +15,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Compute lowercase Docker image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -35,8 +36,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.DOCKER_IMAGE }}:latest
-            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -51,7 +52,7 @@ jobs:
           DATABASE_URL: "postgresql+asyncpg://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@${{ secrets.DATABASE_HOST }}:5432/${{ secrets.DATABASE_NAME }}"
         run: |
           koyeb service update tohutou/tohutou-app \
-            --docker "${{ env.DOCKER_IMAGE }}:${{ github.sha }}" \
+            --docker "${{ steps.image.outputs.name }}:${{ github.sha }}" \
             --docker-command "./entrypoint.sh" \
             --instance-type nano \
             --region fra \
@@ -71,7 +72,7 @@ jobs:
             || koyeb app create tohutou \
             && koyeb service create tohutou-app \
               --app tohutou \
-              --docker "${{ env.DOCKER_IMAGE }}:${{ github.sha }}" \
+              --docker "${{ steps.image.outputs.name }}:${{ github.sha }}" \
               --docker-command "./entrypoint.sh" \
               --docker-private-registry-secret ghcr-secret \
               --instance-type nano \
