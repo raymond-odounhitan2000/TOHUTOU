@@ -48,14 +48,11 @@ jobs:
         env:
           KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
         run: |
-          # Installer le CLI Koyeb
           curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
           export PATH="$HOME/.koyeb/bin:$PATH"
 
-          # Construire la DATABASE_URL
           DB_URL="postgresql+asyncpg://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@${{ secrets.DATABASE_HOST }}:5432/${{ secrets.DATABASE_NAME }}"
 
-          # Arguments communs update & create
           COMMON_ARGS=(
             --docker "${{ steps.image.outputs.name }}:${{ github.sha }}"
             --docker-command "./entrypoint.sh"
@@ -78,15 +75,14 @@ jobs:
             --env "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}"
           )
 
-          # Mettre à jour si le service existe, sinon créer
           if koyeb service update tohutou/tohutou-app "${COMMON_ARGS[@]}"; then
             echo "✅ Service mis à jour avec succès"
           else
             echo "⚠️  Service introuvable, création en cours..."
-            koyeb app create tohutou
+            koyeb app create tohutou || echo "ℹ️  App déjà existante, on continue..."
             koyeb service create tohutou-app \
               --app tohutou \
               --docker-private-registry-secret ghcr-secret \
               "${COMMON_ARGS[@]}"
-            echo "✅ App et service créés avec succès"
+            echo "✅ Service créé avec succès"
           fi
