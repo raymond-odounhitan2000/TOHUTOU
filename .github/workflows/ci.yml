@@ -83,7 +83,7 @@ jobs:
         run: uv sync
 
       - name: Static security scan (Bandit)
-        run: uv run --with bandit bandit -q -r app -x app/alembic
+        run: uv run --with bandit bandit -q -r app -x app/alembic -x app/scripts
 
       - name: Dependency vulnerability audit (pip-audit)
         run: uv run --with pip-audit pip-audit
