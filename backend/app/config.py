@@ -43,9 +43,12 @@ class Settings(BaseSettings):
     @field_validator("AES_KEY")
     @classmethod
     def validate_aes_key(cls, value: str) -> str:
-        clean = value.strip().lower()
-        if len(clean) != 64:
-            raise ValueError("AES_KEY doit contenir exactement 64 caractères hexadécimaux")
+        # Tolère espaces/sauts de ligne et clés trop longues (prend les 64 premiers caractères hex)
+        raw = value.strip().lower().replace(" ", "").replace("\n", "").replace("\r", "")
+        clean = "".join(c for c in raw if c in "0123456789abcdef")
+        if len(clean) < 64:
+            raise ValueError("AES_KEY doit contenir au moins 64 caractères hexadécimaux")
+        clean = clean[:64]
         try:
             int(clean, 16)
         except ValueError as exc:

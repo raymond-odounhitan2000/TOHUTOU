@@ -220,8 +220,8 @@ async def create_conversation(
             reference_id=conversation.id,
             reference_type="conversation",
         )
-    except Exception:
-        pass  # Don't fail the request if notification fails
+    except Exception:  # nosec B110 - notification optionnelle, ne pas faire échouer la requête
+        pass
 
     return await _build_response(conversation, current_user.id, db)
 
@@ -308,8 +308,8 @@ async def send_message(
             reference_id=conv.id,
             reference_type="conversation",
         )
-    except Exception:
-        pass  # Don't fail the request if notification fails
+    except Exception:  # nosec B110 - notification optionnelle, ne pas faire échouer la requête
+        pass
 
     return message
 
