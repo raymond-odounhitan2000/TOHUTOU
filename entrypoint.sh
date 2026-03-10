@@ -16,4 +16,8 @@ node server.js &
 FRONTEND_PID=$!
 echo "Frontend started on :3000 (PID $FRONTEND_PID)"
 
-wait $BACKEND_PID $FRONTEND_PID
+wait -n $BACKEND_PID $FRONTEND_PID
+EXIT_CODE=$?
+
+kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true
+exit $EXIT_CODE
