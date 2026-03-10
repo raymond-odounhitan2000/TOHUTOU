@@ -47,21 +47,15 @@ jobs:
       - name: Deploy to Koyeb
         env:
           KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
-          DATABASE_URL: >-
-            postgresql+asyncpg://
-            ${{ secrets.DATABASE_USER }}:
-            ${{ secrets.DATABASE_PASSWORD }}@
-            ${{ secrets.DATABASE_HOST }}:5432/
-            ${{ secrets.DATABASE_NAME }}
         run: |
           # Installer le CLI Koyeb
           curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
           export PATH="$HOME/.koyeb/bin:$PATH"
 
-          # Construire la DATABASE_URL proprement (sans espaces)
+          # Construire la DATABASE_URL
           DB_URL="postgresql+asyncpg://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@${{ secrets.DATABASE_HOST }}:5432/${{ secrets.DATABASE_NAME }}"
 
-          # Variables communes pour éviter la répétition
+          # Arguments communs update & create
           COMMON_ARGS=(
             --docker "${{ steps.image.outputs.name }}:${{ github.sha }}"
             --docker-command "./entrypoint.sh"
@@ -69,6 +63,8 @@ jobs:
             --region fra
             --port "8000:http"
             --port "3000:http"
+            --routes "/api:8000"
+            --routes "/:3000"
             --env "DATABASE_URL=${DB_URL}"
             --env "SECRET_KEY=${{ secrets.SECRET_KEY }}"
             --env "AES_KEY=${{ secrets.AES_KEY }}"
@@ -82,8 +78,7 @@ jobs:
             --env "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}"
           )
 
-          # Mettre à jour le service existant,
-          # sinon créer l'app + le service (premier déploiement)
+          # Mettre à jour si le service existe, sinon créer
           if koyeb service update tohutou/tohutou-app "${COMMON_ARGS[@]}"; then
             echo "✅ Service mis à jour avec succès"
           else
