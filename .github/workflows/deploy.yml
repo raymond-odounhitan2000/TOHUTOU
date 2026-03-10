@@ -75,11 +75,11 @@ jobs:
             --env "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}"
           )
 
-          if koyeb service update tohutou/tohutou-app "${COMMON_ARGS[@]}"; then
+          if koyeb service update tohutou/tohutou-app --docker-private-registry-secret ghcr-secret "${COMMON_ARGS[@]}"; then
             echo "✅ Service mis à jour avec succès"
           else
             echo "⚠️  Service introuvable, création en cours..."
-            koyeb app create tohutou || echo "ℹ️  App déjà existante, on continue..."
+            koyeb app create tohutou 2>/dev/null || echo "ℹ️  App déjà existante, on continue..."
             koyeb service create tohutou-app \
               --app tohutou \
               --docker-private-registry-secret ghcr-secret \
