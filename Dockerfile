@@ -27,10 +27,9 @@ RUN uv sync --frozen --no-dev
 COPY backend/app ./app
 COPY backend/alembic.ini .
 
-# frontend build
-COPY --from=frontend /frontend/.next ./frontend/.next
+COPY --from=frontend /frontend/.next/standalone ./frontend
+COPY --from=frontend /frontend/.next/static ./frontend/.next/static
 COPY --from=frontend /frontend/public ./frontend/public
-COPY --from=frontend /frontend/package.json ./frontend/package.json
 
 # entrypoint
 COPY entrypoint.sh .
