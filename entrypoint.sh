@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 echo "Starting TOHUTOU..."
@@ -16,8 +16,8 @@ node server.js &
 FRONTEND_PID=$!
 echo "Frontend started on :3000 (PID $FRONTEND_PID)"
 
-wait -n $BACKEND_PID $FRONTEND_PID
-EXIT_CODE=$?
-
+while kill -0 $BACKEND_PID 2>/dev/null && kill -0 $FRONTEND_PID 2>/dev/null; do
+  sleep 1
+done
 kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true
-exit $EXIT_CODE
+exit 2
