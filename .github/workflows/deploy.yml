@@ -1,4 +1,4 @@
-name: Deploy to Koyeb
+name: Build, Push & Deploy
 
 on:
   push:
@@ -14,7 +14,8 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Compute lowercase Docker image name
         id: image
@@ -43,50 +44,54 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
 
-      - name: Install Koyeb CLI
-        run: curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
-
       - name: Deploy to Koyeb
         env:
           KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
-          DATABASE_URL: "postgresql+asyncpg://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@${{ secrets.DATABASE_HOST }}:5432/${{ secrets.DATABASE_NAME }}"
+          DATABASE_URL: >-
+            postgresql+asyncpg://
+            ${{ secrets.DATABASE_USER }}:
+            ${{ secrets.DATABASE_PASSWORD }}@
+            ${{ secrets.DATABASE_HOST }}:5432/
+            ${{ secrets.DATABASE_NAME }}
         run: |
-          koyeb service update tohutou/tohutou-app \
-            --docker "${{ steps.image.outputs.name }}:${{ github.sha }}" \
-            --docker-command "./entrypoint.sh" \
-            --instance-type nano \
-            --region fra \
-            --port "8000:http" \
-            --port "3000:http" \
-            --env "DATABASE_URL=${{ env.DATABASE_URL }}" \
-            --env "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
-            --env "AES_KEY=${{ secrets.AES_KEY }}" \
-            --env "CORS_ORIGINS=${{ vars.CORS_ORIGINS }}" \
-            --env "S3_ENDPOINT=${{ secrets.S3_ENDPOINT }}" \
-            --env "S3_BUCKET=${{ secrets.S3_BUCKET }}" \
-            --env "S3_ACCESS_KEY=${{ secrets.S3_ACCESS_KEY }}" \
-            --env "S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}" \
-            --env "S3_REGION=${{ vars.S3_REGION }}" \
-            --env "ADMIN_PHONE=${{ secrets.ADMIN_PHONE }}" \
-            --env "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}" \
-            || koyeb app create tohutou \
-            && koyeb service create tohutou-app \
+          # Installer le CLI Koyeb
+          curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
+          export PATH="$HOME/.koyeb/bin:$PATH"
+
+          # Construire la DATABASE_URL proprement (sans espaces)
+          DB_URL="postgresql+asyncpg://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@${{ secrets.DATABASE_HOST }}:5432/${{ secrets.DATABASE_NAME }}"
+
+          # Variables communes pour éviter la répétition
+          COMMON_ARGS=(
+            --docker "${{ steps.image.outputs.name }}:${{ github.sha }}"
+            --docker-command "./entrypoint.sh"
+            --instance-type nano
+            --region fra
+            --port "8000:http"
+            --port "3000:http"
+            --env "DATABASE_URL=${DB_URL}"
+            --env "SECRET_KEY=${{ secrets.SECRET_KEY }}"
+            --env "AES_KEY=${{ secrets.AES_KEY }}"
+            --env "CORS_ORIGINS=${{ vars.CORS_ORIGINS }}"
+            --env "S3_ENDPOINT=${{ secrets.S3_ENDPOINT }}"
+            --env "S3_BUCKET=${{ secrets.S3_BUCKET }}"
+            --env "S3_ACCESS_KEY=${{ secrets.S3_ACCESS_KEY }}"
+            --env "S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}"
+            --env "S3_REGION=${{ vars.S3_REGION }}"
+            --env "ADMIN_PHONE=${{ secrets.ADMIN_PHONE }}"
+            --env "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}"
+          )
+
+          # Mettre à jour le service existant,
+          # sinon créer l'app + le service (premier déploiement)
+          if koyeb service update tohutou/tohutou-app "${COMMON_ARGS[@]}"; then
+            echo "✅ Service mis à jour avec succès"
+          else
+            echo "⚠️  Service introuvable, création en cours..."
+            koyeb app create tohutou
+            koyeb service create tohutou-app \
               --app tohutou \
-              --docker "${{ steps.image.outputs.name }}:${{ github.sha }}" \
-              --docker-command "./entrypoint.sh" \
               --docker-private-registry-secret ghcr-secret \
-              --instance-type nano \
-              --region fra \
-              --port "8000:http" \
-              --port "3000:http" \
-              --env "DATABASE_URL=${{ env.DATABASE_URL }}" \
-              --env "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
-              --env "AES_KEY=${{ secrets.AES_KEY }}" \
-              --env "CORS_ORIGINS=${{ vars.CORS_ORIGINS }}" \
-              --env "S3_ENDPOINT=${{ secrets.S3_ENDPOINT }}" \
-              --env "S3_BUCKET=${{ secrets.S3_BUCKET }}" \
-              --env "S3_ACCESS_KEY=${{ secrets.S3_ACCESS_KEY }}" \
-              --env "S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}" \
-              --env "S3_REGION=${{ vars.S3_REGION }}" \
-              --env "ADMIN_PHONE=${{ secrets.ADMIN_PHONE }}" \
-              --env "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}"
+              "${COMMON_ARGS[@]}"
+            echo "✅ App et service créés avec succès"
+          fi
