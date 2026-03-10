@@ -1,3 +1,5 @@
+import json
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
@@ -14,8 +16,8 @@ class Settings(BaseSettings):
     # AES-256 encryption key (32 bytes hex-encoded = 64 chars)
     AES_KEY: str
 
-    # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    # CORS (env: JSON "[\"https://a.com\"]" ou URLs séparées par des virgules; accès liste via .cors_origins_list)
+    CORS_ORIGINS: str = "http://localhost:3000"
 
     # Super Admin (created on first startup)
     ADMIN_PHONE: str = ""
@@ -49,6 +51,19 @@ class Settings(BaseSettings):
         except ValueError as exc:
             raise ValueError("AES_KEY doit être hexadécimal") from exc
         return clean
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS_ORIGINS (JSON array ou URLs séparées par des virgules) en liste."""
+        s = (self.CORS_ORIGINS or "").strip()
+        if not s:
+            return ["http://localhost:3000"]
+        if s.startswith("["):
+            try:
+                return json.loads(s)
+            except json.JSONDecodeError:
+                pass
+        return [o.strip() for o in s.split(",") if o.strip()]
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
