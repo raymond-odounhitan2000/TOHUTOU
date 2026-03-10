@@ -3,17 +3,17 @@ set -e
 
 echo "Starting TOHUTOU..."
 
-# Run Alembic migrations
-cd /app/backend
+# Run Alembic migrations (backend est à la racine /app dans l'image)
+cd /app
 python -m alembic upgrade head
 echo "Database migrations applied."
 
-# Start backend (background)
+# Start backend (background, depuis /app)
 uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 echo "Backend started on :8000 (PID $BACKEND_PID)"
 
-# Start frontend
+# Start frontend (Next.js standalone)
 cd /app/frontend
 node server.js &
 FRONTEND_PID=$!
