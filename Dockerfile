@@ -1,53 +1,41 @@
-# --- Stage 1: Build frontend ---
-FROM node:22-alpine AS frontend-build
+# -------- FRONTEND BUILD --------
+FROM node:20-bookworm-slim AS frontend
 
-WORKDIR /app/frontend
 
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+WORKDIR /frontend
 
-COPY frontend/ ./
+COPY frontend/package*.json ./
+RUN npm install
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
-ARG NEXT_PUBLIC_API_URL=/api
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-
+COPY frontend .
 RUN npm run build
 
-# --- Stage 2: Final image ---
+# -------- BACKEND --------
 FROM python:3.12-slim
 
-# Install Node.js runtime for Next.js
-RUN apt-get update && apt-get install -y --no-install-recommends curl && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y --no-install-recommends nodejs && \
-    apt-get purge -y curl && \
-    apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-# Install uv
+# installer uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# --- Backend ---
-WORKDIR /app/backend
-
+# dépendances backend
 COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --frozen --no-dev
 
-COPY backend/alembic.ini ./
-COPY backend/app/ ./app/
+# code backend
+COPY backend/app ./app
+COPY backend/alembic.ini .
 
-# --- Frontend (from build stage) ---
-WORKDIR /app/frontend
+# frontend build
+COPY --from=frontend /frontend/.next ./frontend/.next
+COPY --from=frontend /frontend/public ./frontend/public
+COPY --from=frontend /frontend/package.json ./frontend/package.json
 
-COPY --from=frontend-build /app/frontend/.next/standalone/. ./
-COPY --from=frontend-build /app/frontend/.next/static ./.next/static
-COPY --from=frontend-build /app/frontend/public ./public
-
-# --- Entrypoint ---
-WORKDIR /app
-COPY entrypoint.sh ./
+# entrypoint
+COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
-EXPOSE 8000 3000
+EXPOSE 8000
 
 CMD ["./entrypoint.sh"]
