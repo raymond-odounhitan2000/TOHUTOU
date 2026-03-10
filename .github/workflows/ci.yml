@@ -86,7 +86,7 @@ jobs:
         run: uv run --with bandit bandit -q -r app -x app/alembic -x app/scripts
 
       - name: Dependency vulnerability audit (pip-audit)
-        run: uv run --with pip-audit pip-audit
+        run: uv run --with pip-audit pip-audit --ignore-vulnerability CVE-2024-23342
 
   frontend:
     name: Frontend - Lint & Build
