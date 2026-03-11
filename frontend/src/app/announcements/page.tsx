@@ -59,7 +59,10 @@ export default function AnnouncementsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/organizations").then((r) => setOrganizations(r.data)).catch(() => {});
+    api
+      .get("/organizations")
+      .then((r) => setOrganizations(Array.isArray(r?.data) ? r.data : []))
+      .catch(() => setOrganizations([]));
   }, []);
 
   useEffect(() => {
@@ -69,9 +72,11 @@ export default function AnnouncementsPage() {
     api
       .get(`/cooperatives?organization_id=${orgFilter}`)
       .then((r) => {
-        if (active) setCooperatives(r.data);
+        if (active) setCooperatives(Array.isArray(r?.data) ? r.data : []);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setCooperatives([]);
+      });
 
     return () => {
       active = false;
@@ -88,11 +93,18 @@ export default function AnnouncementsPage() {
       .get<PaginatedAnnouncements>(`/announcements?${params}`)
       .then((r) => {
         if (!active) return;
-        setAnnouncements(r.data.items);
-        setTotal(r.data.total);
-        setPages(r.data.pages);
+        const data = r?.data;
+        setAnnouncements(Array.isArray(data?.items) ? data.items : []);
+        setTotal(typeof data?.total === "number" ? data.total : 0);
+        setPages(typeof data?.pages === "number" ? data.pages : 0);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (active) {
+          setAnnouncements([]);
+          setTotal(0);
+          setPages(0);
+        }
+      })
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -104,21 +116,21 @@ export default function AnnouncementsPage() {
 
   const filteredAnnouncements = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
-    return announcements.filter((announcement) => {
+    return (announcements ?? []).filter((announcement) => {
       const statusOk = statusFilter === "all" || announcement.status === statusFilter;
-      const searchOk = !search || announcement.variety.toLowerCase().includes(search);
+      const variety = announcement?.variety ?? "";
+      const searchOk = !search || String(variety).toLowerCase().includes(search);
       return statusOk && searchOk;
     });
   }, [announcements, searchTerm, statusFilter]);
 
   const stats = useMemo(() => {
-    const approved = announcements.filter((a) => a.status === "approved").length;
-    const pending = announcements.filter((a) => a.status === "pending").length;
-    const totalQuantity = announcements.reduce((sum, a) => sum + Number(a.quantity || 0), 0);
+    const list = announcements ?? [];
+    const approved = list.filter((a) => a.status === "approved").length;
+    const pending = list.filter((a) => a.status === "pending").length;
+    const totalQuantity = list.reduce((sum, a) => sum + Number(a?.quantity ?? 0), 0);
     const averagePrice =
-      announcements.length > 0
-        ? announcements.reduce((sum, a) => sum + Number(a.price || 0), 0) / announcements.length
-        : 0;
+      list.length > 0 ? list.reduce((sum, a) => sum + Number(a?.price ?? 0), 0) / list.length : 0;
 
     return {
       approved,
@@ -339,12 +351,12 @@ export default function AnnouncementsPage() {
           </FadeIn>
         ) : (
           <StaggerContainer className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredAnnouncements.map((announcement) => {
-              const statusStyle = STATUS_STYLES[announcement.status] || STATUS_STYLES.pending;
-              const displayImageUrl = getDisplayImageUrl(announcement.photo_url);
+            {(filteredAnnouncements ?? []).map((announcement) => {
+              const statusStyle = STATUS_STYLES[announcement?.status] || STATUS_STYLES.pending;
+              const displayImageUrl = getDisplayImageUrl(announcement?.photo_url);
               return (
-                <StaggerItem key={announcement.id}>
-                  <Link href={`/announcements/${announcement.id}`} className="group block">
+                <StaggerItem key={announcement?.id ?? Math.random()}>
+                  <Link href={`/announcements/${announcement?.id ?? ""}`} className="group block">
                     <motion.article
                       whileHover={{ y: -6 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
@@ -356,7 +368,7 @@ export default function AnnouncementsPage() {
                             whileHover={{ scale: 1.07 }}
                             transition={{ duration: 0.5, ease: "easeOut" }}
                             src={displayImageUrl}
-                            alt={announcement.variety}
+                            alt={announcement?.variety ?? "Annonce"}
                             className="h-full w-full object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
@@ -380,10 +392,10 @@ export default function AnnouncementsPage() {
                       <div className="space-y-3 p-5">
                         <div className="flex items-start justify-between gap-3">
                           <h3 className="text-xl font-semibold tracking-tight text-slate-900 transition group-hover:text-emerald-700">
-                            {announcement.variety}
+                            {announcement?.variety ?? "—"}
                           </h3>
                           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                            {announcement.maturity}
+                            {announcement?.maturity ?? "—"}
                           </span>
                         </div>
 
@@ -391,19 +403,19 @@ export default function AnnouncementsPage() {
                           <div className="rounded-xl bg-slate-50 p-3">
                             <p className="text-xs uppercase tracking-wide text-slate-500">Quantite</p>
                             <p className="mt-1 font-semibold text-slate-800">
-                              {numberFormatter.format(Number(announcement.quantity))} kg
+                              {numberFormatter.format(Number(announcement?.quantity ?? 0))} kg
                             </p>
                           </div>
                           <div className="rounded-xl bg-emerald-50 p-3">
                             <p className="text-xs uppercase tracking-wide text-emerald-700/70">Prix</p>
                             <p className="mt-1 font-semibold text-emerald-800">
-                              {numberFormatter.format(Number(announcement.price))} FCFA
+                              {numberFormatter.format(Number(announcement?.price ?? 0))} FCFA
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
-                          <span>{new Date(announcement.created_at).toLocaleDateString("fr-FR")}</span>
+                          <span>{announcement?.created_at ? new Date(announcement.created_at).toLocaleDateString("fr-FR") : "—"}</span>
                           <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 transition group-hover:gap-2">
                             Voir details
                             <ArrowRight className="h-3.5 w-3.5" />
