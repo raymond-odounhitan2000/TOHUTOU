@@ -66,7 +66,7 @@ class Settings(BaseSettings):
                 return json.loads(s)
             except json.JSONDecodeError:
                 pass
-        return [o.strip() for o in s.split(",") if o.strip()]
+        return [o.strip() for o in s.replace(";", ",").split(",") if o.strip()]
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
