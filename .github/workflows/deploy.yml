@@ -60,8 +60,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
           export PATH="$HOME/.koyeb/bin:$PATH"
 
-          DB_URL="postgresql+asyncpg://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@${{ secrets.DATABASE_HOST }}:5432/${{ secrets.DATABASE_NAME }}"
-
+          DB_URL="${{ secrets.DB_URL }}"
           CORS_ORIGINS="${{ vars.CORS_ORIGINS }}"
           CORS_ORIGINS=$(echo "$CORS_ORIGINS" | sed 's/[][]//g' | sed 's/"//g' | tr -d '\n' | sed 's/  */ /g' | tr ',' ';')
 
