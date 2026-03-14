@@ -1,12 +1,46 @@
 import json
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
+from sqlalchemy import URL
 
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = ""
+    DATABASE_HOST: str = ""
+    DATABASE_USER: str = ""
+    DATABASE_PASSWORD: str = ""
+    DATABASE_NAME: str = ""
+    DATABASE_PORT: int = 5432
+
+    @model_validator(mode="after")
+    def require_database_config(self):
+        """Exige soit DATABASE_URL, soit DATABASE_HOST + USER + NAME."""
+        url = (self.DATABASE_URL or "").strip()
+        has_components = self.DATABASE_HOST and self.DATABASE_USER and self.DATABASE_NAME
+        if not url and not has_components:
+            raise ValueError(
+                "Config DB : définir DATABASE_URL ou (DATABASE_HOST, DATABASE_USER, DATABASE_NAME)"
+            )
+        return self
+
+    @property
+    def database_url(self) -> str:
+        """URL de connexion : construite avec URL.create si composants fournis, sinon DATABASE_URL."""
+        if self.DATABASE_HOST and self.DATABASE_USER and self.DATABASE_NAME:
+            url = URL.create(
+                drivername="postgresql+asyncpg",
+                username=self.DATABASE_USER,
+                password=self.DATABASE_PASSWORD,
+                host=self.DATABASE_HOST,
+                port=self.DATABASE_PORT,
+                database=self.DATABASE_NAME,
+            )
+            return url.render_as_string(hide_password=False)
+        s = (self.DATABASE_URL or "").strip()
+        if s and s.startswith("postgresql://") and "+asyncpg" not in s:
+            s = s.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return s
 
     # JWT
     SECRET_KEY: str
