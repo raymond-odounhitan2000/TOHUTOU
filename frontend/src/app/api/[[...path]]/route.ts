@@ -5,6 +5,10 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ path?: string[] }> }
 ) {
+  const { path = [] } = await context.params;
+  if (path.length === 1 && path[0] === "ping") {
+    return Response.json({ ok: true, source: "next-api-route" });
+  }
   return proxy(request, context, "GET");
 }
 
