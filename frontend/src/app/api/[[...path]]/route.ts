@@ -7,7 +7,7 @@ export async function GET(
 ) {
   const { path = [] } = await context.params;
   if (path.length === 1 && path[0] === "ping") {
-    return Response.json({ ok: true, source: "next-api-route" });
+    return Response.json({ ok: true, source: "next-api-route", note: "local dev only" });
   }
   return proxy(request, context, "GET");
 }
@@ -48,7 +48,7 @@ async function proxy(
   const { path = [] } = await context.params;
   const pathStr = path.length > 0 ? path.join("/") : "";
   const url = new URL(request.url);
-  const backendUrl = `${BACKEND_BASE}/api/${pathStr}${url.search}`;
+  const backendUrl = `${BACKEND_BASE}/${pathStr}${url.search}`;
 
   const headers: HeadersInit = {};
   request.headers.forEach((value, key) => {

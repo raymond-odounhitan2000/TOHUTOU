@@ -220,18 +220,18 @@ uploads_dir = Path(__file__).resolve().parents[1] / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
-app.include_router(auth.router, prefix="/api")
-app.include_router(users.router, prefix="/api")
-app.include_router(organizations.router, prefix="/api")
-app.include_router(cooperatives.router, prefix="/api")
-app.include_router(announcements.router, prefix="/api")
-app.include_router(membership_requests.router, prefix="/api")
-app.include_router(conversations.router, prefix="/api")
-app.include_router(notifications.router, prefix="/api")
-app.include_router(stats.router, prefix="/api")
-app.include_router(upload.router, prefix="/api")
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(organizations.router)
+app.include_router(cooperatives.router)
+app.include_router(announcements.router)
+app.include_router(membership_requests.router)
+app.include_router(conversations.router)
+app.include_router(notifications.router)
+app.include_router(stats.router)
+app.include_router(upload.router)
 
 
-@app.get("/api/health")
+@app.get("/health")
 async def health():
     return {"status": "ok"}

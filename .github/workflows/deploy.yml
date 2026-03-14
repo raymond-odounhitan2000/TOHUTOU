@@ -70,6 +70,9 @@ jobs:
             --instance-type free
             --region fra
             --port "3000:http"
+            --port "8000:http"
+            --routes "/api:8000"
+            --routes "/:3000"
             --env "DATABASE_URL=${DB_URL}"
             --env "SECRET_KEY=${{ secrets.SECRET_KEY }}"
             --env "AES_KEY=${{ secrets.AES_KEY }}"
