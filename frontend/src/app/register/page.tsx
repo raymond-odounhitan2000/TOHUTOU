@@ -22,13 +22,27 @@ export default function RegisterPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [cooperatives, setCooperatives] = useState<Cooperative[]>([]);
   const [loadingCoops, setLoadingCoops] = useState(false);
+  const [organizationsLoading, setOrganizationsLoading] = useState(true);
+  const [organizationsError, setOrganizationsError] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    api.get("/organizations").then((r) => setOrganizations(r.data)).catch(() => {});
+    setOrganizationsLoading(true);
+    setOrganizationsError(false);
+    api
+      .get("/organizations")
+      .then((r) => {
+        const list = Array.isArray(r?.data) ? r.data : [];
+        setOrganizations(list);
+      })
+      .catch(() => {
+        setOrganizationsError(true);
+        setOrganizations([]);
+      })
+      .finally(() => setOrganizationsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -85,8 +99,15 @@ export default function RegisterPage() {
       });
       router.push("/login");
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { detail?: string } } };
-      setError(axiosErr.response?.data?.detail || "Erreur lors de l'inscription");
+      const axiosErr = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> }; status?: number } };
+      const detail = axiosErr.response?.data?.detail;
+      let message = "Erreur lors de l'inscription";
+      if (typeof detail === "string") {
+        message = detail;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        message = detail.map((d) => (typeof d === "object" && d?.msg ? d.msg : String(d))).join(". ");
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -324,17 +345,28 @@ export default function RegisterPage() {
                       <label htmlFor="org" className="block text-sm font-medium text-gray-700 mb-1.5">
                         Organisation <span className="text-gray-400 font-normal">(optionnel)</span>
                       </label>
-                      <select
-                        id="org"
-                        value={organizationId}
-                        onChange={(e) => setOrganizationId(e.target.value ? Number(e.target.value) : "")}
-                        className={selectCls()}
-                      >
-                        <option value="">-- Aucune --</option>
-                        {organizations.map((o) => (
-                          <option key={o.id} value={o.id}>{o.name}</option>
-                        ))}
-                      </select>
+                      {organizationsLoading ? (
+                        <p className="text-sm text-gray-500 py-2">Chargement des organisations...</p>
+                      ) : (
+                        <>
+                          <select
+                            id="org"
+                            value={organizationId}
+                            onChange={(e) => setOrganizationId(e.target.value ? Number(e.target.value) : "")}
+                            className={selectCls()}
+                          >
+                            <option value="">-- Aucune --</option>
+                            {organizations.map((o) => (
+                              <option key={o.id} value={o.id}>{o.name}</option>
+                            ))}
+                          </select>
+                          {organizationsError && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              Impossible de charger la liste. Vérifiez la connexion ou réessayez plus tard.
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
 
                     <AnimatePresence mode="wait">
