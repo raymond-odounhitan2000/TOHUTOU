@@ -351,11 +351,11 @@ export default function AnnouncementsPage() {
           </FadeIn>
         ) : (
           <StaggerContainer className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {(filteredAnnouncements ?? []).map((announcement) => {
+            {(filteredAnnouncements ?? []).map((announcement, index) => {
               const statusStyle = STATUS_STYLES[announcement?.status] || STATUS_STYLES.pending;
               const displayImageUrl = getDisplayImageUrl(announcement?.photo_url);
               return (
-                <StaggerItem key={announcement?.id ?? Math.random()}>
+                <StaggerItem key={announcement?.id ?? `announcement-${index}`}>
                   <Link href={`/announcements/${announcement?.id ?? ""}`} className="group block">
                     <motion.article
                       whileHover={{ y: -6 }}
