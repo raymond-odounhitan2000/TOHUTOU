@@ -1,0 +1,31 @@
+# Option : Postgres local (pour le dev sans base externe).
+# Usage : docker-compose -f docker-compose.yml -f docker-compose.db.yml up -d
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tohutou_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tohutou_db}
+      POSTGRES_USER: ${POSTGRES_USER:-tohutou}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tohutou_dev}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tohutou} -d ${POSTGRES_DB:-tohutou_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://tohutou:tohutou_dev@db:5432/tohutou_db}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
