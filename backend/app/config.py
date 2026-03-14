@@ -38,8 +38,13 @@ class Settings(BaseSettings):
             )
             return url.render_as_string(hide_password=False)
         s = (self.DATABASE_URL or "").strip()
-        if s and s.startswith("postgresql://") and "+asyncpg" not in s:
-            s = s.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if not s:
+            return s
+        if "+asyncpg" not in s:
+            if s.startswith("postgres://"):
+                s = "postgresql+asyncpg://" + s[len("postgres://") :]
+            elif s.startswith("postgresql://"):
+                s = s.replace("postgresql://", "postgresql+asyncpg://", 1)
         return s
 
     # JWT
@@ -47,13 +52,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
-    # AES-256 encryption key (32 bytes hex-encoded = 64 chars)
     AES_KEY: str
 
-    # CORS (env: JSON "[\"https://a.com\"]" ou URLs séparées par des virgules; accès liste via .cors_origins_list)
     CORS_ORIGINS: str = "http://localhost:3000"
 
-    # Super Admin (created on first startup)
     ADMIN_PHONE: str = ""
     ADMIN_PASSWORD: str = ""
     ADMIN_FIRST_NAME: str = "Super"
