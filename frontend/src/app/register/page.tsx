@@ -77,6 +77,11 @@ export default function RegisterPage() {
     if (password !== confirmPassword) {
       errors.confirmPassword = "Les mots de passe ne correspondent pas";
     }
+    if (role === "producer") {
+      if (!organizationId) errors.organizationId = "L'organisation est requise";
+      else if (cooperatives.length > 0 && !cooperativeId)
+        errors.cooperativeId = "La cooperative est requise pour cette organisation";
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -192,7 +197,6 @@ export default function RegisterPage() {
               <div className="relative grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-xl">
                 {/* Sliding indicator */}
                 <motion.div
-                  layoutId="role-indicator"
                   className="absolute top-1 bottom-1 bg-green-700 rounded-lg shadow-sm"
                   style={{ width: "calc(50% - 4px)" }}
                   animate={{ x: role === "buyer" ? 4 : "calc(100% + 4px)" }}
@@ -365,6 +369,11 @@ export default function RegisterPage() {
                               Impossible de charger la liste. Vérifiez la connexion ou réessayez plus tard.
                             </p>
                           )}
+                          {fieldErrors.organizationId && (
+                            <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 mt-1">
+                              {fieldErrors.organizationId}
+                            </motion.p>
+                          )}
                         </>
                       )}
                     </div>
@@ -388,17 +397,24 @@ export default function RegisterPage() {
                             ) : cooperatives.length === 0 ? (
                               <p className="text-sm text-gray-400 py-2">Aucune cooperative pour cette organisation</p>
                             ) : (
-                              <select
-                                id="coop"
-                                value={cooperativeId}
-                                onChange={(e) => setCooperativeId(e.target.value ? Number(e.target.value) : "")}
-                                className={selectCls()}
-                              >
-                                <option value="">-- Aucune --</option>
-                                {cooperatives.map((c) => (
-                                  <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                              </select>
+                              <>
+                                <select
+                                  id="coop"
+                                  value={cooperativeId}
+                                  onChange={(e) => { setCooperativeId(e.target.value ? Number(e.target.value) : ""); setFieldErrors((p) => ({ ...p, cooperativeId: "" })); }}
+                                  className={`${selectCls()} ${fieldErrors.cooperativeId ? "border-red-400 ring-1 ring-red-400" : ""}`}
+                                >
+                                  <option value="">-- Aucune --</option>
+                                  {cooperatives.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                  ))}
+                                </select>
+                                {fieldErrors.cooperativeId && (
+                                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 mt-1">
+                                    {fieldErrors.cooperativeId}
+                                  </motion.p>
+                                )}
+                              </>
                             )}
                           </div>
                         </motion.div>

@@ -17,19 +17,19 @@ async def register_user(db: AsyncSession, data: UserRegister) -> User:
             detail="Le rôle demandé n'est pas autorisé à l'inscription publique",
         )
 
-    if data.role == UserRole.PRODUCER:
-        if not data.organization_id or not data.cooperative_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Un producteur doit renseigner son organisation et sa coopérative",
-            )
-    elif data.cooperative_id:
+    if data.role != UserRole.PRODUCER and data.cooperative_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Seuls les producteurs peuvent être rattachés à une coopérative",
         )
 
-    if data.organization_id:
+    if data.role == UserRole.PRODUCER:
+        if not data.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Un producteur doit sélectionner une organisation",
+            )
+
         org_result = await db.execute(
             select(Organization).where(Organization.id == data.organization_id)
         )
@@ -39,20 +39,40 @@ async def register_user(db: AsyncSession, data: UserRegister) -> User:
                 detail="Organisation invalide",
             )
 
-    if data.cooperative_id:
-        coop_result = await db.execute(
-            select(Cooperative).where(Cooperative.id == data.cooperative_id)
+        coop_count_result = await db.execute(
+            select(Cooperative).where(Cooperative.organization_id == data.organization_id)
         )
-        coop = coop_result.scalar_one_or_none()
-        if not coop:
+        org_has_coops = coop_count_result.scalars().first() is not None
+
+        if org_has_coops and not data.cooperative_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Coopérative invalide",
+                detail="Cette organisation a des coopératives, veuillez en sélectionner une",
             )
-        if coop.organization_id != data.organization_id:
+
+        if data.cooperative_id:
+            coop_result = await db.execute(
+                select(Cooperative).where(Cooperative.id == data.cooperative_id)
+            )
+            coop = coop_result.scalar_one_or_none()
+            if not coop:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Coopérative invalide",
+                )
+            if coop.organization_id != data.organization_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="La coopérative ne correspond pas à l'organisation sélectionnée",
+                )
+    elif data.organization_id:
+        org_result = await db.execute(
+            select(Organization).where(Organization.id == data.organization_id)
+        )
+        if not org_result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="La coopérative ne correspond pas à l'organisation sélectionnée",
+                detail="Organisation invalide",
             )
 
     existing = await db.execute(select(User).where(User.phone == data.phone))
