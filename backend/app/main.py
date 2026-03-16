@@ -1,10 +1,11 @@
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app.config import settings
 from app.core.security import hash_password
@@ -192,12 +193,30 @@ async def seed_organization_admins():
                 print(f"- {org_name}: {phone} / {password}")
 
 
+async def _db_keepalive():
+    """Pingue la DB toutes les 4 min pour éviter la mise en veille (Neon free tier)."""
+    from app.database import engine
+    while True:
+        await asyncio.sleep(4 * 60)
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        except Exception:
+            pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await seed_admin()
     await seed_organizations()
     await seed_organization_admins()
+    task = asyncio.create_task(_db_keepalive())
     yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(
