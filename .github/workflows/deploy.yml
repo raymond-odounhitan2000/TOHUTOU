@@ -21,15 +21,6 @@ jobs:
         id: image
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Set API URL for frontend build
-        id: api_url
-        run: |
-          if [ -z "${{ vars.NEXT_PUBLIC_API_URL }}" ]; then
-            echo "url=/api" >> "$GITHUB_OUTPUT"
-          else
-            echo "url=${{ vars.NEXT_PUBLIC_API_URL }}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -50,8 +41,6 @@ jobs:
             ${{ steps.image.outputs.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            NEXT_PUBLIC_API_URL=${{ steps.api_url.outputs.url }}
 
       - name: Deploy to Koyeb
         env:
