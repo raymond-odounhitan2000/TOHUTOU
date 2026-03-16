@@ -27,7 +27,7 @@ for i in range(10):
 "
 
 cd /app/frontend
-node server.js &
+HOSTNAME=0.0.0.0 node server.js &
 FRONTEND_PID=$!
 echo "Frontend started on :3000 (PID $FRONTEND_PID)"
 
